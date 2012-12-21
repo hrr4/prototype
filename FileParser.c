@@ -1,9 +1,8 @@
-
 #include "FileParser.h"
 
 int FileParser_OpenFile(char* fileString, FileParser* parserStruct)
 {
-  if (parserStruct->currentFile = fopen(fileString, "rt")) 
+  if (parserStruct->currentFile = fopen(fileString, "rb")) 
     return 1; 
   return 0;
 }
@@ -15,29 +14,8 @@ int FileParser_CloseFile(FileParser* parserStruct)
   return EOF;
 }
 
-fpos_t FileParser_FindNode(char* nodeString, FileParser* parserStruct)
+long FileParser_FindNode(char* nodeString, FileParser* parserStruct)
 {
-  /*char strBuf[150];
-  fpos_t objPos;
-
-  while (!feof(parserStruct->currentFile))
-  {
-    if (fgets(strBuf, 150, parserStruct->currentFile))
-    {
-      if (strstr(strBuf, nodeString))
-      {
-        fgetpos(parserStruct->currentFile, &objPos);
-        rewind(parserStruct->currentFile);
-
-        return objPos-strlen(strBuf)-2;
-      }
-    }
-  }
-
-  rewind(parserStruct->currentFile);
-  fpos_t objPos;*/
-  
-  /* fgetpos(parserStruct->currentFile, &objPos); */
   return FileParser_NextNode(fseek(parserStruct->currentFile, 0, SEEK_SET), nodeString, parserStruct);
 }
 
@@ -57,29 +35,26 @@ char* FileParser_RetrieveData(long nodePosition, char* tagString, FileParser* pa
    /* fsetpos(parserStruct->currentFile, nodePosition); */
     fseek(parserStruct->currentFile, nodePosition, SEEK_SET);
 
-    /* while (!feof(parserStruct->currentFile))
-    { */
-      /* Get the rest of the line. */
-      if (fgets(lineBuf, 150, parserStruct->currentFile))
+    /* Get the rest of the line. */
+    if (fgets(lineBuf, 250, parserStruct->currentFile))
+    {
+      /* Tokenize the buffer, lets look for our tag! */
+      char* currentToken = strtok(lineBuf, delims);
+
+      while (currentToken != NULL)
       {
-        /* Tokenize the buffer, lets look for our tag! */
-        char* currentToken = strtok(lineBuf, delims);
-
-        while (currentToken != NULL)
+        if (strcmp(tagString, currentToken) == 0)
         {
-          if (strcmp(tagString, currentToken) == 0)
-          {
-            /* Found the tag! We need to retrieve the data now. */
-            /* Should be the next token!... Hopefully....*/
-            fseek(parserStruct->currentFile, 0, SEEK_SET);
+          /* Found the tag! We need to retrieve the data now. */
+          /* Should be the next token!... Hopefully....*/
+          fseek(parserStruct->currentFile, 0, SEEK_SET);
 
-            return strtok(NULL, delims);
-          }
-
-          currentToken = strtok(NULL, delims);
+          return strtok(NULL, delims);
         }
+
+        currentToken = strtok(NULL, delims);
       }
-    /* } */
+    }
 
     return "";
   }
@@ -89,35 +64,40 @@ char* FileParser_RetrieveData(long nodePosition, char* tagString, FileParser* pa
   }
 }
 
-fpos_t FileParser_NextNode(long currentPosition, char* nodeString, FileParser* parserStruct)
+long FileParser_NextNode(long currentPosition, char* nodeString, FileParser* parserStruct)
 {
-  char lineBuf[250];
-  char* delims = "< ";
+  char lineBuf[250], nodeName[15];
   long newPos;
-  /* fpos_t objPos; */
+  static int lineNums = 0;
 
-  /* fsetpos(parserStruct->currentFile, currentPosition); */
   fseek(parserStruct->currentFile, currentPosition, SEEK_SET);
 
   while (!feof(parserStruct->currentFile))
   {
-    if (fgets(lineBuf, 150, parserStruct->currentFile))
+    /* Get the rest of the line. */
+    if (fgets(lineBuf, 250, parserStruct->currentFile))
     {
-      int lineBufSize = strlen(lineBuf);
-      char* currentToken = strtok(lineBuf, delims);
+      char* linePos = lineBuf;
 
-      /* fgetpos(parserStruct->currentFile, &objPos); */
-      if (strcmp(currentToken, nodeString) == 0)
-      {
-        /* return the position of our object. */
-        //fgetpos(parserStruct->currentFile, &objPos);
-        newPos = ftell(parserStruct->currentFile);
+      /* ++lineNums; */
 
-        /* BUG: FSEEK AND REWIND WONT GO BACK TO THE BEGINNING OF THE FILE! */
-        fseek(parserStruct->currentFile, 0, SEEK_SET);
+      /* Check for spaces because of XML nesting. */
+      while (*linePos == ' ') linePos++;
 
-        return newPos-(lineBufSize - strlen(nodeString))-2;
-      }
+      if (sscanf(linePos, "<%s", nodeName))
+        ++lineNums;
+    }
+
+    /* See if we're at the right node. */
+    if (strcmp(nodeName, nodeString) == 0)
+    {
+      /* Match */
+      int length = strlen(lineBuf);/* +1+lineLength;*/
+      long pos = ftell(parserStruct->currentFile) - /* lineNums - */ length;
+
+      fseek(parserStruct->currentFile, pos, SEEK_SET);
+      fgets(lineBuf, 250, parserStruct->currentFile);
+      return pos;
     }
   }
 
