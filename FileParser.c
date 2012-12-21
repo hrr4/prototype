@@ -27,49 +27,34 @@ long FileParser_FindNode(char* nodeString, FileParser* parserStruct)
 char* FileParser_RetrieveData(long nodePosition, char* tagString, FileParser* parserStruct)
 {
   int tagLength = strlen(tagString);
-  char lineBuf[250];
-  char* delims = " =<>\"";
+  char lineBuf[250], *delims = "=\"";
 
   if (nodePosition >= 0LL)
   {
-   /* fsetpos(parserStruct->currentFile, nodePosition); */
     fseek(parserStruct->currentFile, nodePosition, SEEK_SET);
 
-    /* Get the rest of the line. */
     if (fgets(lineBuf, 250, parserStruct->currentFile))
     {
-      /* Tokenize the buffer, lets look for our tag! */
-      char* currentToken = strtok(lineBuf, delims);
+      char* currentTag;
 
-      while (currentToken != NULL)
+      if ((currentTag = strstr(lineBuf, tagString)))
       {
-        if (strcmp(tagString, currentToken) == 0)
-        {
-          /* Found the tag! We need to retrieve the data now. */
-          /* Should be the next token!... Hopefully....*/
-          fseek(parserStruct->currentFile, 0, SEEK_SET);
+        /* Increment the substring pointer past the actual tag string. */
+        while (tagLength-- > 0) currentTag++;
 
-          return strtok(NULL, delims);
-        }
-
-        currentToken = strtok(NULL, delims);
+        return strtok(currentTag, delims);
       }
     }
+  }
 
-    return "";
-  }
-  else
-  {
-    return "";
-  }
+  return "";
 }
 
 long FileParser_NextNode(long currentPosition, char* nodeString, FileParser* parserStruct)
 {
   char lineBuf[250], nodeName[15];
-  long newPos;
-  static int lineNums = 0;
 
+  /* Goto the position we're starting from. */
   fseek(parserStruct->currentFile, currentPosition, SEEK_SET);
 
   while (!feof(parserStruct->currentFile))
@@ -79,26 +64,18 @@ long FileParser_NextNode(long currentPosition, char* nodeString, FileParser* par
     {
       char* linePos = lineBuf;
 
-      /* ++lineNums; */
-
-      /* Check for spaces because of XML nesting. */
+      /* Check for spaces because of XML nesting.
+         If we have some, incrememt the pointer. */
       while (*linePos == ' ') linePos++;
 
-      if (sscanf(linePos, "<%s", nodeName))
-        ++lineNums;
+      /* Read the new node name. */
+      sscanf(linePos, "<%s", nodeName);
     }
 
     /* See if we're at the right node. */
     if (strcmp(nodeName, nodeString) == 0)
-    {
       /* Match */
-      int length = strlen(lineBuf);/* +1+lineLength;*/
-      long pos = ftell(parserStruct->currentFile) - /* lineNums - */ length;
-
-      fseek(parserStruct->currentFile, pos, SEEK_SET);
-      fgets(lineBuf, 250, parserStruct->currentFile);
-      return pos;
-    }
+      return ftell(parserStruct->currentFile) - strlen(lineBuf);
   }
 
   return -1LL;
