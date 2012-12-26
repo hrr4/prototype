@@ -1,8 +1,27 @@
-#include "FileParser.h"
+#include "LevelData.h"
 
-#include <assert.h>
 
 int main(int argc, char* argv[])
+{
+  LEVELDATA* currentData;
+  long testPosition;
+  char objectString[15], dataString[VALUESIZE], fileString[20], tagString[20], **textArray = 0;
+  int nodeCount = 0, row = 0, col = 0;
+
+  /*printf("Give me a level to scan: ");
+  scanf("%s", fileString);*/
+
+  currentData = LevelData_Initialize("test.tmx");
+
+  LevelData_Cleanup(currentData);
+
+  //////////////////////////////////////////////////////////////////////
+
+  return 0;
+}
+
+
+/*int main(int argc, char* argv[])
 {
   long testPosition;
   char objectString[15], dataString[VALUESIZE], fileString[20], tagString[20], **textArray = 0;
@@ -39,7 +58,6 @@ int main(int argc, char* argv[])
   //////////////////////////////////////////////////////////////////////
 
 
-  /* -1 signals we either couldn't find the node or we reached the EOF. */
   while ((testPosition = FileParser_NextNode(testPosition, objectString, myParser)) != EOF)
   {
     printf("Lets find the rest!\n");
@@ -84,6 +102,8 @@ int main(int argc, char* argv[])
     printf("Couldn't get text!\n");
     return -1;
   }
+  else
+  {
 
   for (row = 0; row < 100; ++row)
   {
@@ -95,12 +115,13 @@ int main(int argc, char* argv[])
     printf("\n");
   }
 
-  /* FileParser_EmptyLayer(100, 100, &textArray); */
   FileParser_DestroyLayer(100, 100, &textArray);
 
-  /* Cleanup */
+  }
+
   FileParser_CloseFile(myParser);
   free(myParser);
 
   return 0;
 }
+*/
